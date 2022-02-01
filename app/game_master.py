@@ -31,13 +31,15 @@ class GameMaster:
         self.remaining_turns = number_of_turns
 
     def start_game(self):
-        # Start the game
-        socketio.start_background_task(target=self.run_game)
+        socketio.start_background_task(target=self.first_run)
+
+    def first_run(self):
+        # Give the players some time to answer
+        socketio.sleep(self.max_response_time)
+        self.run_game()
 
     def run_game(self):
-        # Give the players some time to answer
-        socketio.sleep(self.time_between_turns)
-
+        # Start the game
         while self.remaining_turns > 0:
             # Start a new turn
             self.start_turn()
@@ -156,3 +158,8 @@ class GameMaster:
                     'player_score': score['score'],
                 },
                 room=score['player'].sid)
+
+    def play_again(self):
+        if (self.remaining_turns == 0 and not self.game.is_turn_happening):
+            self.remaining_turns = self.number_of_turns
+            socketio.start_background_task(target=self.run_game)

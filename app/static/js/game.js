@@ -31,6 +31,11 @@ $(document).ready(function () {
     $("#user_rank").slideToggle();
   });
 
+  $("#game_rules").click(() => {
+    // Emit answer event
+    socket.emit("play_again", gameId);
+  });
+
   // Create the leaflet map
   map = createMap();
 
@@ -302,7 +307,7 @@ function handleEndOfTurn(data) {
   // Update game rules
   $("#game_rules").html(
     data.remaining_turns === 0
-      ? "End of the round"
+      ? "End of the round. Click to go again."
       : "Waiting for the next turn"
   );
 }

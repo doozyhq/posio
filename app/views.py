@@ -93,6 +93,13 @@ def leave_games():
             leave_room(request.sid)
 
 
+@socketio.on('play_again')
+def leave_games(game_id):
+    app.logger.info('A player has left the game')
+    if game_id in games:
+        games[game_id].play_again()
+
+
 @socketio.on('answer')
 def store_answer(game_id, latitude, longitude):
     app.logger.info('Player {request} has answered for game {game_id} {latitude} {longitude}'.format(
