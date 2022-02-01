@@ -12,8 +12,8 @@ if (!gameId) {
   window.location.href = "/";
 }
 
-var username = new URLSearchParams(window.location.search).get("username");
-var userId = new URLSearchParams(window.location.search).get(playerIdStorage);
+var username = getUsername();
+var userId = getSetUserId();
 
 $(document).ready(function () {
   // Create the progress bar
@@ -42,30 +42,10 @@ $(document).ready(function () {
   // Create the marker group used to clear markers between turns
   markerGroup = new L.LayerGroup().addTo(map);
 
-  if (!userId) {
-    if (typeof Storage !== "undefined") {
-      if (localStorage.getItem(playerIdStorage)) {
-        userId = localStorage.getItem(playerIdStorage);
-      } else {
-        userId = createId(20);
-        localStorage.setItem(playerIdStorage, userId);
-      }
-    } else {
-      userId = createId(20);
-    }
-  }
-
   // Look for a previously entered player name in local storage
-  if (
-    username ||
-    (typeof Storage !== "undefined" && localStorage.getItem(playerNameStorage))
-  ) {
+  if (username && userId) {
     // If player name found, start the game using it
-    joinGame(
-      gameId,
-      userId,
-      username || localStorage.getItem(playerNameStorage)
-    );
+    joinGame(gameId, userId, username);
   } else {
     // Else, ask for player name
     login();
@@ -111,20 +91,20 @@ function createMap() {
     var div = L.DomUtil.create("div", "info");
     div.id = "legend";
     div.innerHTML +=
-      '<img src="' +
+      '<div><img src="' +
       cdnUrl +
       "/images/marker-icon-blue.png" +
-      '" alt="Your answer"/> Your answer<br>';
+      '" alt="Your answer"/> Your answer</div>';
     div.innerHTML +=
-      '<img src="' +
+      '<div><img src="' +
       cdnUrl +
       "/images/marker-icon-red.png" +
-      '" alt="Correct answer"/> Correct answer<br>';
+      '" alt="Correct answer"/> Correct answer</div>';
     div.innerHTML +=
-      '<img src="' +
+      '<div><img src="' +
       cdnUrl +
       "/images/marker-icon-green.png" +
-      '" alt="Best answer"/> Closest answer<br>';
+      '" alt="Best answer"/> Closest answer</div>';
     return div;
   };
 
@@ -211,7 +191,7 @@ function updateLeaderboard(data) {
       $("#leaderboard table tr:last").after(
         '<tr class="score_row user_score"><td>' +
           (i + 1) +
-          `</td><td>${data.player_name || username || ""}(You)</td><td>` +
+          `</td><td>${data.player_name || username || ""} (You)</td><td>` +
           data.player_score +
           "</td></tr>"
       );
@@ -229,7 +209,7 @@ function updateLeaderboard(data) {
     $("#leaderboard table tr:last").after(
       '<tr class="score_row user_score"><td>' +
         (data.player_rank + 1) +
-        `</td><td>${data.player_name || username || ""}(You)</td><td>` +
+        `</td><td>${data.player_name || username || ""} (You)</td><td>` +
         data.player_score +
         "</td></tr>"
     );
@@ -253,7 +233,7 @@ function handleNewTurn(data) {
       "</span> (" +
       data.current_turn.country +
       ")" +
-      ` (${data.remaining_turns} / ${data.total_turns})`
+      ` (${data.total_turns - data.remaining_turns + 1} / ${data.total_turns})`
   );
 
   // Show countdown timer
@@ -276,6 +256,7 @@ function handleEndOfTurn(data) {
 
   // Disable answers listener
   map.off("click", answer);
+  map.off("mousedown", answer);
 
   // Reset countdown timer
   progressBar.set(0);
@@ -306,7 +287,7 @@ function handleEndOfTurn(data) {
   // Update game rules
   $("#game_rules").html(
     data.remaining_turns === 0
-      ? "End of the round. Click to go again."
+      ? "End of the round. Click to play again."
       : "Waiting for the next turn"
   );
 }
@@ -440,4 +421,30 @@ function createId(length) {
     id += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return id;
+}
+
+function getUsername() {
+  const searchUN = new URLSearchParams(window.location.search).get("username");
+
+  if (searchUN) {
+    return searchUN;
+  }
+}
+
+function getSetUserId() {
+  let userId = new URLSearchParams(window.location.search).get(playerIdStorage);
+
+  if (!userId) {
+    if (typeof Storage !== "undefined") {
+      if (localStorage.getItem(playerIdStorage)) {
+        userId = localStorage.getItem(playerIdStorage);
+      } else {
+        userId = createId(20);
+        localStorage.setItem(playerIdStorage, userId);
+      }
+    } else {
+      userId = createId(20);
+    }
+  }
+  return userId;
 }
