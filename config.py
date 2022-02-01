@@ -1,4 +1,7 @@
 # How long is given to players to answer a question
+import os
+
+
 MAX_RESPONSE_TIME = 8
 
 # Number of seconds between each turns
@@ -24,4 +27,4 @@ CORS_ALLOWED_ORIGINS = '*'
 
 # Host and port the server should listen.
 HOST='0.0.0.0'
-PORT=5000
+PORT=int(os.environ.get('PORT', 8000))
