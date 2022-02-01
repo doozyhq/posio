@@ -3,15 +3,17 @@ var map = null,
   markerGroup = null,
   socket = null,
   allowMultipleAnswer = false,
-  playerNameStorage = "player_name";
+  playerNameStorage = "player_name",
+  playerIdStorage = "player_id";
 
-var gameId = window.location.pathname.split("/game/")[1];
+const gameId = window.location.pathname.split("/game/")[1];
 
 if (!gameId) {
   window.location.href = "/";
 }
 
 var username = new URLSearchParams(window.location.search).get("username");
+var userId = new URLSearchParams(window.location.search).get(playerIdStorage);
 
 $(document).ready(function () {
   // Create the progress bar
@@ -35,13 +37,30 @@ $(document).ready(function () {
   // Create the marker group used to clear markers between turns
   markerGroup = new L.LayerGroup().addTo(map);
 
+  if (!userId) {
+    if (typeof Storage !== "undefined") {
+      if (localStorage.getItem(playerIdStorage)) {
+        userId = localStorage.getItem(playerIdStorage);
+      } else {
+        userId = createId(20);
+        localStorage.setItem(playerIdStorage, userId);
+      }
+    } else {
+      userId = createId(20);
+    }
+  }
+
   // Look for a previously entered player name in local storage
   if (
     username ||
     (typeof Storage !== "undefined" && localStorage.getItem(playerNameStorage))
   ) {
     // If player name found, start the game using it
-    joinGame(gameId, username || localStorage.getItem(playerNameStorage));
+    joinGame(
+      gameId,
+      userId,
+      username || localStorage.getItem(playerNameStorage)
+    );
   } else {
     // Else, ask for player name
     login();
@@ -135,7 +154,7 @@ function login() {
       }
 
       // Launch the game
-      joinGame(gameId, playerName);
+      joinGame(gameId, userId, playerName);
 
       $("#modal_background").hide();
     }
@@ -146,7 +165,7 @@ function login() {
  * Join the game using the given player name.
  * @param playerName
  */
-function joinGame(gameId, playerName) {
+function joinGame(gameId, playerId, playerName) {
   // Create the web socket
   socket = io.connect("//" + document.domain + ":" + location.port);
 
@@ -157,7 +176,13 @@ function joinGame(gameId, playerName) {
   socket.on("leaderboard_update", updateLeaderboard);
 
   // Join the default game
-  socket.emit("join_game", gameId, playerName);
+  socket.emit("join_game", gameId, playerId, playerName);
+
+  // Handle end of turn
+  socket.on("end_of_turn", handleEndOfTurn);
+
+  // Handle player results
+  socket.on("player_results", showPlayerResults);
 }
 
 /**
@@ -176,12 +201,13 @@ function updateLeaderboard(data) {
   // Remove previous scores
   $(".score_row").remove();
 
+  debugger;
   for (var i = 0; i < 10; i++) {
     if (data.player_rank == i) {
       $("#leaderboard table tr:last").after(
         '<tr class="score_row user_score"><td>' +
           (i + 1) +
-          "</td><td>You</td><td>" +
+          `</td><td>${data.player_name || username} (You)</td><td>` +
           data.player_score +
           "</td></tr>"
       );
@@ -199,7 +225,7 @@ function updateLeaderboard(data) {
     $("#leaderboard table tr:last").after(
       '<tr class="score_row user_score"><td>' +
         (data.player_rank + 1) +
-        "</td><td>You</td><td>" +
+        `</td><td>${data.player_name || username} (You)</td><td>` +
         data.player_score +
         "</td></tr>"
     );
@@ -212,12 +238,18 @@ function updateLeaderboard(data) {
  * @param data
  */
 function handleNewTurn(data) {
+  console.log("New turn", data);
   // Clear potential markers from previous turn
   markerGroup.clearLayers();
 
   // Update game rules to show the city to find
   $("#game_rules").html(
-    'Locate <span class="city">' + data.city + "</span> (" + data.country + ")"
+    'Locate <span class="city">' +
+      data.current_turn.city +
+      "</span> (" +
+      data.current_turn.country +
+      ")" +
+      ` (${data.remaining_turns} / ${data.total_turns})`
   );
 
   // Show countdown timer
@@ -226,12 +258,6 @@ function handleNewTurn(data) {
   // Enable answers for this turn
   map.on("click", answer);
   map.on("mousedown", answer);
-
-  // Handle end of turn
-  socket.on("end_of_turn", handleEndOfTurn);
-
-  // Handle player results
-  socket.on("player_results", showPlayerResults);
 }
 
 /**
@@ -240,7 +266,7 @@ function handleNewTurn(data) {
  * @param data
  */
 function handleEndOfTurn(data) {
-  debugger;
+  console.log("End of turn", data);
   // Reset zoom to default
   map.setZoom(2);
 
@@ -274,7 +300,11 @@ function handleEndOfTurn(data) {
   correctMarker.bindPopup(data.correct_answer.name);
 
   // Update game rules
-  $("#game_rules").html("Waiting for the next turn");
+  $("#game_rules").html(
+    data.remaining_turns === 0
+      ? "End of the round"
+      : "Waiting for the next turn"
+  );
 }
 
 /**
@@ -396,4 +426,14 @@ function animateValue(elementID, newValue) {
 
   timer = setInterval(run, stepTime);
   run();
+}
+
+function createId(length) {
+  // Alphanumeric characters
+  const chars = "abcdefghijklmnopqrstuvwxyz";
+  let id = "";
+  for (let i = 0; i < length; i++) {
+    id += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return id;
 }

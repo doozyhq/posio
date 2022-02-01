@@ -2,13 +2,16 @@
 import os
 
 
-MAX_RESPONSE_TIME = 8
+MAX_RESPONSE_TIME = 6
 
 # Number of seconds between each turns
 TIME_BETWEEN_TURNS = 5
 
 # Number of answer used to compute ranking
-LEADERBOARD_ANSWER_COUNT = 20
+LEADERBOARD_ANSWER_COUNT = 0
+
+# Default number of turns in a round
+NUMBER_OF_TURNS = 2
 
 # The distance above which score is zero
 SCORE_MAX_DISTANCE = 2000
@@ -17,7 +20,7 @@ SCORE_MAX_DISTANCE = 2000
 ALLOW_MULTIPLE_ANSWER = 1  # 0 for False, 1 for True
 
 # How many zoom level are allowed (max 2)
-ZOOM_LEVEL = 0
+ZOOM_LEVEL = 1
 
 # CDN URL
 CDN_URL = 'static'
@@ -26,5 +29,5 @@ CDN_URL = 'static'
 CORS_ALLOWED_ORIGINS = '*'
 
 # Host and port the server should listen.
-HOST='0.0.0.0'
-PORT=int(os.environ.get('PORT', 8000))
+HOST = '0.0.0.0'
+PORT = int(os.environ.get('PORT', 8000))

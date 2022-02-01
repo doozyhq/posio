@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
 
+import cgi
+from html import escape
 import random
 import string
 from flask import redirect, render_template, request
 from app import app, socketio
 from flask_socketio import join_room, leave_room
+
+from posio.game import Game
 from .game_master import GameMaster
 
 # The max distance used to compute players score
@@ -15,6 +19,9 @@ MAX_RESPONSE_TIME = app.config.get('MAX_RESPONSE_TIME')
 
 # The time between two turns
 TIME_BETWEEN_TURNS = app.config.get('TIME_BETWEEN_TURNS')
+
+# The time between two turns
+NUMBER_OF_TURNS = app.config.get('NUMBER_OF_TURNS')
 
 # How many answers are used to compute user score
 LEADERBOARD_ANSWER_COUNT = app.config.get('LEADERBOARD_ANSWER_COUNT')
@@ -30,7 +37,7 @@ CDN_URL = app.config.get('CDN_URL')
 
 
 # Dictionary of current games
-games = {}
+games: dict[str, GameMaster] = {}
 
 
 @app.route('/')
@@ -38,6 +45,7 @@ def home():
     letters = string.ascii_lowercase
     game_id = ''.join(random.choice(letters) for i in range(10))
     return redirect("/game/" + game_id, code=302)
+
 
 @app.route('/game/<game_id>')
 def render_game(game_id):
@@ -50,30 +58,36 @@ def render_game(game_id):
 
 
 @socketio.on('join_game')
-def join_game(game_id, player_name):
+def join_game(game_id: str, player_id: str, player_name):
     app.logger.info('{player_name} has joined the game {game_id}'.format(
         player_name=player_name, game_id=game_id))
+
+    game_id = escape(game_id)
+    player_id = escape(player_id)
+    player_name = escape(player_name)
 
     if game_id not in games:
         # Create the game master and start the game
         games[game_id] = GameMaster(game_id,
-                                SCORE_MAX_DISTANCE,
-                                LEADERBOARD_ANSWER_COUNT,
-                                MAX_RESPONSE_TIME,
-                                TIME_BETWEEN_TURNS)
+                                    SCORE_MAX_DISTANCE,
+                                    LEADERBOARD_ANSWER_COUNT,
+                                    MAX_RESPONSE_TIME,
+                                    TIME_BETWEEN_TURNS,
+                                    NUMBER_OF_TURNS)
         games[game_id].start_game()
 
     # Add the player to the game
     join_room(game_id)
     join_room(request.sid)
-    games[game_id].game.add_player(request.sid, player_name)
+    games[game_id].game.add_player(request.sid, player_id, player_name)
+    games[game_id].on_join()
 
 
 @socketio.on('disconnect')
 def leave_games():
     app.logger.info('A player has left the game')
     for game_id in games:
-        if games[game_id].game.player_exits(request.sid): 
+        if games[game_id].game.player_exits(request.sid):
             games[game_id].game.remove_player(request.sid)
             leave_room(game_id)
             leave_room(request.sid)
@@ -82,7 +96,10 @@ def leave_games():
 @socketio.on('answer')
 def store_answer(game_id, latitude, longitude):
     app.logger.info('Player {request} has answered for game {game_id} {latitude} {longitude}'.format(
-        request={request.sid},game_id=game_id, latitude=latitude, longitude=longitude))
+        request={request.sid}, game_id=game_id, latitude=latitude, longitude=longitude))
+
+    game_id = escape(game_id)
+
     if game_id in games:
         app.logger.info("Game exists")
         games[game_id].game.store_answer(request.sid, latitude, longitude)

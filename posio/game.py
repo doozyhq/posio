@@ -23,25 +23,39 @@ class Game:
         self.score_max_distance = score_max_distance
         self.leaderboard_answer_count = leaderboard_answer_count
         self.cities = self.get_cities()
-        self.players = {}
-        self.answers = []
+        self.players: dict[str, Player] = {}
         self.turn_number = 0
+        self.is_turn_happening = False
 
     def player_exits(self, player_sid):
         return player_sid in self.players
 
-    def add_player(self, player_sid, player_name):
-        self.players[player_sid] = Player(player_sid, player_name)
+    def add_player(self, player_sid, player_id, player_name):
+        if player_id in self.players:
+            self.players[player_id].sid = player_sid
+            self.players[player_id].set_is_online(True)
+            self.players[player_id].set_name(player_name)
+        else:
+            self.players[player_id] = Player(
+                player_sid, player_id, player_name)
 
     def remove_player(self, player_sid):
-        # Get the player corresponding to the given sid and remove it
-        if player_sid in self.players:
-            del self.players[player_sid]
+        # Get the player corresponding to the given sid and mark them offline
+        for player_id in self.players:
+            if self.players[player_id].sid == player_sid:
+                self.players[player_id].set_is_online(False)
+                self.players[player_id].set_sid(None)
+
+    def total_online(self):
+        total = 0
+
+        for player_id in self.players:
+            total += self.players[player_id].is_online
+
+        return total
 
     def start_new_turn(self):
-        # Reset answers for this turn
-        self.answers = []
-
+        self.is_turn_happening = True
         # Update turn number
         self.turn_number += 1
 
@@ -52,12 +66,14 @@ class Game:
     def store_answer(self, player_sid, latitude, longitude):
         print("Storing answer")
         # Get the player corresponding to the given sid
-        if player_sid in self.players:
-            # Store player answer
-            answer = Answer(latitude, longitude)
-            self.players[player_sid].add_answer(self.turn_number, answer)
+        for player_id in self.players:
+            if player_sid == self.players[player_id].sid:
+                # Store player answer
+                answer = Answer(latitude, longitude)
+                self.players[player_id].add_answer(self.turn_number, answer)
 
     def end_current_turn(self):
+        self.is_turn_happening = False
         current_city = self.get_current_city()
 
         # Compute scores for each player
@@ -90,7 +106,7 @@ class Game:
 
     def get_ranked_scores(self):
         # Get scores for each players
-        oldest_turn = self.turn_number - self.leaderboard_answer_count
+        oldest_turn = self.turn_number + 1
         scores_by_player = {
             player_sid: player.get_global_score(oldest_turn, self.turn_number)
             for player_sid, player in self.players.items()}
@@ -145,11 +161,14 @@ class Game:
 
 
 class Player:
-    def __init__(self, sid, name):
+    def __init__(self, sid: str, user_id: str, name: str):
         self.sid = sid
+        self.user_id = user_id
+        self.is_online = True
         self.name = name
         self.answers = {}
         self.results = {}
+        self.sessions = []
 
     def add_answer(self, turn, answer):
         self.answers[turn] = answer
@@ -162,6 +181,18 @@ class Player:
 
     def set_result(self, turn, score):
         self.results[turn] = score
+
+    def set_is_online(self, online):
+        self.is_online = online
+
+    def set_sid(self, sid):
+        self.dif = sid
+
+    def set_result(self, turn, score):
+        self.results[turn] = score
+
+    def set_name(self, name: str):
+        self.name = name
 
     def has_played(self, turn):
         return turn in self.results

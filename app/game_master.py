@@ -14,7 +14,8 @@ class GameMaster:
                  score_max_distance,
                  leaderboard_answer_count,
                  max_response_time,
-                 time_between_turns):
+                 time_between_turns,
+                 number_of_turns):
         """
         :param game_id: The id of this game
         :param score_max_distance: The distance above which player scores will be null
@@ -26,13 +27,18 @@ class GameMaster:
         self.game = Game(score_max_distance, leaderboard_answer_count)
         self.max_response_time = max_response_time
         self.time_between_turns = time_between_turns
+        self.number_of_turns = number_of_turns
+        self.remaining_turns = number_of_turns
 
     def start_game(self):
         # Start the game
         socketio.start_background_task(target=self.run_game)
 
     def run_game(self):
-        while True:
+        # Give the players some time to answer
+        socketio.sleep(self.time_between_turns)
+
+        while self.remaining_turns > 0:
             # Start a new turn
             self.start_turn()
 
@@ -61,12 +67,23 @@ class GameMaster:
         socketio.emit(
             'new_turn',
             {
-                'city': city['name'],
-                'country': city['country'],
-                'country_code': city['country'],
+                'current_turn': {
+                    'city': city['name'],
+                    'country': city['country'],
+                    'country_code': city['country'],
+                },
+                'remaining_turns': self.remaining_turns,
+                'total_turns': self.number_of_turns
             },
             room=self.game_id
         )
+
+        self.remaining_turns -= 1
+
+    def on_join(self):
+        if self.game.is_turn_happening == False and self.game.turn_number > 0:
+            self.end_turn()
+        self.update_leaderboard()
 
     def end_turn(self):
         app.logger.debug('Ending turn')
@@ -86,7 +103,9 @@ class GameMaster:
                 'name': city['name'],
                 'lat': city['latitude'],
                 'lng': city['longitude'],
-            }
+            },
+            'remaining_turns': self.remaining_turns,
+            'total_turns': self.number_of_turns
         }
 
         if player_count > 0:
