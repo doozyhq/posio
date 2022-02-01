@@ -11,7 +11,7 @@ TIME_BETWEEN_TURNS = 5
 LEADERBOARD_ANSWER_COUNT = 0
 
 # Default number of turns in a round
-NUMBER_OF_TURNS = 2
+NUMBER_OF_TURNS = 10
 
 # The distance above which score is zero
 SCORE_MAX_DISTANCE = 2000
