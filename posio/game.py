@@ -27,6 +27,9 @@ class Game:
         self.answers = []
         self.turn_number = 0
 
+    def player_exits(self, player_sid):
+        return player_sid in self.players
+
     def add_player(self, player_sid, player_name):
         self.players[player_sid] = Player(player_sid, player_name)
 
@@ -47,6 +50,7 @@ class Game:
         return self.cities[self.turn_number % len(self.cities)]
 
     def store_answer(self, player_sid, latitude, longitude):
+        print("Storing answer")
         # Get the player corresponding to the given sid
         if player_sid in self.players:
             # Store player answer

@@ -1,11 +1,11 @@
 # How long is given to players to answer a question
-MAX_RESPONSE_TIME = 5
+MAX_RESPONSE_TIME = 8
 
 # Number of seconds between each turns
-TIME_BETWEEN_TURNS = 3
+TIME_BETWEEN_TURNS = 5
 
 # Number of answer used to compute ranking
-LEADERBOARD_ANSWER_COUNT = 10
+LEADERBOARD_ANSWER_COUNT = 20
 
 # The distance above which score is zero
 SCORE_MAX_DISTANCE = 2000

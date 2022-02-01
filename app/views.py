@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from flask import render_template, request
+import random
+import string
+from flask import redirect, render_template, request
 from app import app, socketio
+from flask_socketio import join_room, leave_room
 from .game_master import GameMaster
 
 # The max distance used to compute players score
@@ -25,17 +28,19 @@ ZOOM_LEVEL = min(app.config.get('ZOOM_LEVEL'), 2)
 # CDN Url for static ressources
 CDN_URL = app.config.get('CDN_URL')
 
-# Create the game master and start the game
-game_master = GameMaster(SCORE_MAX_DISTANCE,
-                         LEADERBOARD_ANSWER_COUNT,
-                         MAX_RESPONSE_TIME,
-                         TIME_BETWEEN_TURNS)
-game_master.start_game()
+
+# Dictionary of current games
+games = {}
 
 
 @app.route('/')
-@app.route('/game')
-def render_game():
+def home():
+    letters = string.ascii_lowercase
+    game_id = ''.join(random.choice(letters) for i in range(10))
+    return redirect("/game/" + game_id, code=302)
+
+@app.route('/game/<game_id>')
+def render_game(game_id):
     return render_template('game.html',
                            MAX_RESPONSE_TIME=MAX_RESPONSE_TIME,
                            LEADERBOARD_ANSWER_COUNT=LEADERBOARD_ANSWER_COUNT,
@@ -45,20 +50,39 @@ def render_game():
 
 
 @socketio.on('join_game')
-def join_game(player_name):
-    app.logger.info('{player_name} has joined the game'.format(
-        player_name=player_name))
+def join_game(game_id, player_name):
+    app.logger.info('{player_name} has joined the game {game_id}'.format(
+        player_name=player_name, game_id=game_id))
+
+    if game_id not in games:
+        # Create the game master and start the game
+        games[game_id] = GameMaster(game_id,
+                                SCORE_MAX_DISTANCE,
+                                LEADERBOARD_ANSWER_COUNT,
+                                MAX_RESPONSE_TIME,
+                                TIME_BETWEEN_TURNS)
+        games[game_id].start_game()
 
     # Add the player to the game
-    game_master.game.add_player(request.sid, player_name)
+    join_room(game_id)
+    join_room(request.sid)
+    games[game_id].game.add_player(request.sid, player_name)
 
 
 @socketio.on('disconnect')
 def leave_games():
     app.logger.info('A player has left the game')
-    game_master.game.remove_player(request.sid)
+    for game_id in games:
+        if games[game_id].game.player_exits(request.sid): 
+            games[game_id].game.remove_player(request.sid)
+            leave_room(game_id)
+            leave_room(request.sid)
 
 
 @socketio.on('answer')
-def store_answer(latitude, longitude):
-    game_master.game.store_answer(request.sid, latitude, longitude)
+def store_answer(game_id, latitude, longitude):
+    app.logger.info('Player {request} has answered for game {game_id} {latitude} {longitude}'.format(
+        request={request.sid},game_id=game_id, latitude=latitude, longitude=longitude))
+    if game_id in games:
+        app.logger.info("Game exists")
+        games[game_id].game.store_answer(request.sid, latitude, longitude)

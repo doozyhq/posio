@@ -10,16 +10,19 @@ class GameMaster:
     """
 
     def __init__(self,
+                 game_id,
                  score_max_distance,
                  leaderboard_answer_count,
                  max_response_time,
                  time_between_turns):
         """
+        :param game_id: The id of this game
         :param score_max_distance: The distance above which player scores will be null
         :param leaderboard_answer_count: How many answers are used to compute user scores in the leaderboard
         :param max_response_time: The time given to a player to answer a question
         :param between_turns_duration: The time between two turns
         """
+        self.game_id = game_id
         self.game = Game(score_max_distance, leaderboard_answer_count)
         self.max_response_time = max_response_time
         self.time_between_turns = time_between_turns
@@ -62,6 +65,7 @@ class GameMaster:
                 'country': city['country'],
                 'country_code': city['country'],
             },
+            room=self.game_id
         )
 
     def end_turn(self):
@@ -94,7 +98,7 @@ class GameMaster:
                 'lng': best_answer.longitude
             }
 
-        socketio.emit('end_of_turn', turn_results)
+        socketio.emit('end_of_turn', turn_results, room=self.game_id)
 
         # Then send individual player results
         for rank, player in enumerate(ranked_players):
