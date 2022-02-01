@@ -50,6 +50,7 @@ class Game:
         total = 0
 
         for player_id in self.players:
+            print(self.players[player_id].is_online)
             total += self.players[player_id].is_online
 
         return total
