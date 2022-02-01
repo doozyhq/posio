@@ -106,7 +106,7 @@ class Game:
 
     def get_ranked_scores(self):
         # Get scores for each players
-        oldest_turn = self.turn_number + 1
+        oldest_turn = 0
         scores_by_player = {
             player_sid: player.get_global_score(oldest_turn, self.turn_number)
             for player_sid, player in self.players.items()}

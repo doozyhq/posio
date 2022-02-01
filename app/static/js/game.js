@@ -206,13 +206,12 @@ function updateLeaderboard(data) {
   // Remove previous scores
   $(".score_row").remove();
 
-  debugger;
   for (var i = 0; i < 10; i++) {
     if (data.player_rank == i) {
       $("#leaderboard table tr:last").after(
         '<tr class="score_row user_score"><td>' +
           (i + 1) +
-          `</td><td>${data.player_name || username} (You)</td><td>` +
+          `</td><td>${data.player_name || username || ""}(You)</td><td>` +
           data.player_score +
           "</td></tr>"
       );
@@ -230,7 +229,7 @@ function updateLeaderboard(data) {
     $("#leaderboard table tr:last").after(
       '<tr class="score_row user_score"><td>' +
         (data.player_rank + 1) +
-        `</td><td>${data.player_name || username} (You)</td><td>` +
+        `</td><td>${data.player_name || username || ""}(You)</td><td>` +
         data.player_score +
         "</td></tr>"
     );
