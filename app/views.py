@@ -137,7 +137,9 @@ def run_continuously(interval=1):
                 time.sleep(interval)
 
     continuous_thread = ScheduleThread()
+    continuous_thread.daemon = True
     continuous_thread.start()
+    continuous_thread.join(1)
     return cease_continuous_run
 
 
