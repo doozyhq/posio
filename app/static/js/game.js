@@ -65,7 +65,7 @@ function createMap() {
     layers: [
       L.tileLayer(cdnUrl + "/tiles/{z}/{x}/{y}.png", {
         attribution:
-          'Tiles generated using <a href="https://github.com/mapbox/tilemill" target="_blank">TileMill</a>',
+          '<a href="https://github.com/abrenaut/posio" target="_blank">Posio</a> | Tiles by <a href="https://github.com/mapbox/tilemill" target="_blank">TileMill</a>',
         noWrap: true,
         ext: "png",
       }),
