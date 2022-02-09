@@ -2,7 +2,7 @@
 import os
 
 
-MAX_RESPONSE_TIME = 6
+MAX_RESPONSE_TIME = 7
 
 # Number of seconds between each turns
 TIME_BETWEEN_TURNS = 5
