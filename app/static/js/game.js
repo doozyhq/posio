@@ -52,6 +52,16 @@ $(document).ready(function () {
   }
 });
 
+const showLeaderboard = () => {
+  $("#top_ten").slideToggle();
+  $("#user_rank").slideToggle();
+};
+
+const hideLeaderboard = () => {
+  $("#top_ten").slideToggle();
+  $("#user_rank").slideToggle();
+};
+
 /**
  * Create the leaflet map.
  * @returns {Array|*}
@@ -93,17 +103,17 @@ function createMap() {
     div.innerHTML +=
       '<div><img src="' +
       cdnUrl +
-      "/images/marker-icon-blue.png" +
+      "/images/marker-yours.svg" +
       '" alt="Your answer"/> Your answer</div>';
     div.innerHTML +=
       '<div><img src="' +
       cdnUrl +
-      "/images/marker-icon-red.png" +
+      "/images/marker-correct.svg" +
       '" alt="Correct answer"/> Correct answer</div>';
     div.innerHTML +=
       '<div><img src="' +
       cdnUrl +
-      "/images/marker-icon-green.png" +
+      "/images/marker-closest.svg" +
       '" alt="Best answer"/> Closest answer</div>';
     return div;
   };
@@ -135,7 +145,11 @@ function login() {
     } else {
       // Store player name if possible
       if (typeof Storage !== "undefined") {
-        localStorage.setItem(playerNameStorage, playerName);
+        try {
+          localStorage.setItem(playerNameStorage, playerName);
+        } catch (e) {
+          console.warn(e);
+        }
       }
 
       // Launch the game
@@ -223,6 +237,7 @@ function updateLeaderboard(data) {
  */
 function handleNewTurn(data) {
   console.log("New turn", data);
+
   // Clear potential markers from previous turn
   markerGroup.clearLayers();
 
@@ -242,6 +257,10 @@ function handleNewTurn(data) {
   // Enable answers for this turn
   map.on("click", answer);
   map.on("mousedown", answer);
+
+  if (remaining_turns === 9) {
+    hideLeaderboard();
+  }
 }
 
 /**
@@ -269,18 +288,36 @@ function handleEndOfTurn(data) {
     var bestMarker = createMarker(
       data.best_answer.lat,
       data.best_answer.lng,
-      "green"
+      "marker-closest.svg"
     );
     bestMarker.bindPopup(
-      "Closest answer (<b>" + round(data.best_answer.distance) + " km</b> away)"
+      `Closest answer: ${data.best_answer.player_name} (<b>` +
+        round(data.best_answer.distance) +
+        " km</b> away)"
     );
+  }
+
+  if (data.other_answers) {
+    data.other_answers.forEach((answer) => {
+      var bestMarker = createMarker(
+        answer.lat,
+        answer.lng,
+        "marker-others.svg",
+        [10, 10]
+      );
+      bestMarker.bindPopup(
+        `${data.best_answer.player_name}: <b>` +
+          round(data.best_answer.distance) +
+          " km</b> away"
+      );
+    });
   }
 
   // Show correct answer
   var correctMarker = createMarker(
     data.correct_answer.lat,
     data.correct_answer.lng,
-    "red"
+    "marker-correct.svg"
   );
   correctMarker.bindPopup(data.correct_answer.name);
 
@@ -290,6 +327,10 @@ function handleEndOfTurn(data) {
       ? "End of the round. Click to play again."
       : "Waiting for the next turn"
   );
+
+  if (data.remaining_turns === 0) {
+    showLeaderboard();
+  }
 }
 
 /**
@@ -298,7 +339,7 @@ function handleEndOfTurn(data) {
  */
 function showPlayerResults(data) {
   // Place a marker to identify user answer
-  var userMarker = createMarker(data.lat, data.lng, "blue");
+  var userMarker = createMarker(data.lat, data.lng, "marker-yours.svg");
 
   // Show user score, ranking and distance
   var resultsText =
@@ -342,7 +383,7 @@ function answer(e) {
   }
 
   // Mark the answer on the map
-  createMarker(e.latlng.lat, e.latlng.lng, "blue");
+  createMarker(e.latlng.lat, e.latlng.lng, "marker-yours.svg");
 
   // Emit answer event
   socket.emit("answer", gameId, e.latlng.lat, e.latlng.lng);
@@ -355,11 +396,11 @@ function answer(e) {
  * @param color
  * @returns {*}
  */
-function createMarker(lat, lng, color) {
+function createMarker(lat, lng, image, size = [38, 38]) {
   var icon = new L.Icon({
-    iconUrl: cdnUrl + "/images/marker-icon-" + color + ".png",
-    shadowUrl: cdnUrl + "/images/marker-shadow.png",
-    iconAnchor: [12, 41],
+    iconUrl: cdnUrl + "/images/" + image,
+    iconSize: size,
+    iconAnchor: [19, 38],
     popupAnchor: [1, -34],
   });
 

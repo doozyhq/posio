@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import threading
 from app import socketio, app
 from posio.game import Game
 
@@ -29,6 +30,7 @@ class GameMaster:
         self.time_between_turns = time_between_turns
         self.number_of_turns = number_of_turns
         self.remaining_turns = number_of_turns
+        self.lock = threading.Lock()
 
     def start_game(self):
         socketio.start_background_task(target=self.first_run)
@@ -115,9 +117,27 @@ class GameMaster:
             best_answer = ranked_players[0].get_answer(self.game.turn_number)
             turn_results['best_answer'] = {
                 'distance': best_result.distance,
+                'score': best_result.score,
                 'lat': best_answer.latitude,
-                'lng': best_answer.longitude
+                'lng': best_answer.longitude,
+                'player_name': ranked_players[0].name
             }
+            turn_results['other_answers'] = []
+
+            # Then send individual player results
+            for rank, player in enumerate(ranked_players):
+                if rank > 0:
+                    result = player.get_result(self.game.turn_number)
+                    answer = player.get_answer(self.game.turn_number)
+                    turn_results['other_answers'].append(
+                        {
+                            'rank': rank + 1,
+                            'player_name': player.name,
+                            'distance': result.distance,
+                            'score': result.score,
+                            'lat': answer.latitude,
+                            'lng': answer.longitude,
+                        })
 
         socketio.emit('end_of_turn', turn_results, room=self.game_id)
 
@@ -160,6 +180,10 @@ class GameMaster:
                 room=score['player'].sid)
 
     def play_again(self):
+        self.lock.acquire()
+
         if (self.remaining_turns == 0 and not self.game.is_turn_happening):
             self.remaining_turns = self.number_of_turns
             socketio.start_background_task(target=self.run_game)
+
+        self.lock.release()
