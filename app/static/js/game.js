@@ -258,7 +258,7 @@ function handleNewTurn(data) {
   map.on("click", answer);
   map.on("mousedown", answer);
 
-  if (remaining_turns === 9) {
+  if (data.remaining_turns === 9) {
     hideLeaderboard();
   }
 }
